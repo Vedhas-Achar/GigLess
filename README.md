@@ -1,89 +1,137 @@
 # GigLess Campus Marketplace
 
-Full-stack university student freelancing marketplace built with Django, DRF, Channels, React, and PostgreSQL-ready configuration.
+Full-stack student freelancing marketplace with Django REST API + Channels websocket chat and a React (Vite) frontend.
 
-## Features Implemented
+## Current Status
 
-- Email/password authentication with JWT in HTTP-only cookies
-- Role-based users: freelancer and customer
-- Freelancer profile fields: bio, skills, rating
-- Service management with categories and pricing
-- Search and filter by keyword, category, price range, and rating
-- Order workflow with statuses: pending, in_progress, completed
-- Dummy payment marker for MVP flow
-- Reviews only after completed orders
-- Auto freelancer rating aggregation from reviews
-- Chat data model + REST messaging endpoints + websocket consumer
-- Responsive modern UI with core pages
+Implemented and working in this repository:
 
-## Project Structure
+- JWT auth with HTTP-only cookies (`access_token`, `refresh_token`)
+- Role-based accounts (`freelancer`, `customer`)
+- Profile fields and profile photo upload
+- Service listing/creation with category, delivery time, pricing, optional image
+- Search/filter/sort for services
+- Order lifecycle (`pending -> in_progress -> completed`) with participant-only access
+- Review system (only customer, only completed order, one review per order)
+- Freelancer rating auto-aggregation from reviews
+- REST chat + realtime websocket chat for conversation participants
+- Protected frontend routes for authenticated pages
 
-- `backend/` Django API + database models + websocket backend
-- `frontend/` React UI with routing and API integration
+## Tech Stack
 
-## Single Environment Setup (Whole Project)
+- Backend: Django 5, Django REST Framework, SimpleJWT, Channels, Daphne
+- Database: SQLite by default, MySQL when DB env vars are provided
+- Frontend: React 19, Vite 8, React Router, Axios
 
-1. Copy `.env.example` to `.env` at the project root.
-2. Use the single Python virtual environment at project root: `.venv/`.
-3. Run backend and frontend from this same repository workspace.
+## Repository Structure
 
-## Backend Setup
+- `backend/`: Django project (`accounts`, `marketplace_services`, `orders`, `chat`, `config`)
+- `frontend/`: React app
+- `.env.example`: shared env template for backend + frontend
 
-1. Open terminal in the project root.
-2. Activate the shared venv:
+## Environment
+
+1. Copy `.env.example` to `.env` in project root.
+2. Use one Python venv at repository root (`.venv`).
+
+Example (PowerShell):
 
 ```powershell
+Copy-Item .env.example .env
+```
+
+## Backend Setup (Windows PowerShell)
+
+```powershell
+# from project root
 .\.venv\Scripts\Activate.ps1
-```
-
-3. Install dependencies:
-
-```powershell
 python -m pip install -r .\backend\requirements.txt
-```
-
-4. Run migrations:
-
-```powershell
 python .\backend\manage.py migrate
-```
-
-5. Start backend server:
-
-```powershell
 python .\backend\manage.py runserver
 ```
 
-Backend runs on `http://localhost:8000`.
+Backend base URL: `http://localhost:8000`
 
-## Frontend Setup
-
-1. Open terminal in `frontend/`
-2. Install dependencies:
+## Frontend Setup (Windows PowerShell)
 
 ```powershell
+# from project root
+cd .\frontend
 npm install
-```
-
-3. Run development server:
-
-```powershell
 npm run dev
 ```
 
-Frontend runs on `http://localhost:5173`.
+Frontend URL: `http://localhost:5173`
 
-## Core API Routes
+Important: `npm run dev` must be executed inside `frontend/` (or use `npm --prefix frontend run dev` from root).
 
-- Auth: `/api/auth/signup/`, `/api/auth/login/`, `/api/auth/logout/`, `/api/auth/refresh/`, `/api/auth/me/`
-- Services: `/api/services/`, `/api/services/categories/`, `/api/services/{id}/`
-- Orders: `/api/orders/`, `/api/orders/{id}/status/`, `/api/orders/{id}/review/`
-- Reviews by freelancer: `/api/orders/freelancer/{freelancer_id}/reviews/`
-- Chat: `/api/chat/conversations/`, `/api/chat/conversations/{id}/messages/`
-- Websocket: `/ws/chat/{conversation_id}/`
+## API Summary
+
+Base prefix: `/api`
+
+### Auth (`/api/auth/`)
+
+- `POST /signup/`
+- `POST /login/`
+- `POST /logout/`
+- `POST /refresh/`
+- `GET/PATCH /me/`
+- `GET /freelancers/{id}/`
+
+### Services (`/api/services/`)
+
+- `GET/POST /`
+- `GET /categories/`
+- `GET/PATCH/DELETE /{id}/`
+
+Query params supported on `GET /api/services/`:
+
+- `keyword`
+- `category` (id or exact category name)
+- `price_min`
+- `price_max`
+- `rating_min`
+- `ordering` (`price`, `created_at`, `-price`, `-created_at`)
+
+### Orders (`/api/orders/`)
+
+- `GET/POST /`
+- `GET /{id}/`
+- `PATCH /{id}/status/`
+- `POST /{order_id}/review/`
+- `GET /freelancer/{freelancer_id}/reviews/`
+
+Status rules:
+
+- Only freelancer can set `in_progress`
+- Only customer can set `completed`
+
+### Chat (`/api/chat/` + websocket)
+
+- `GET/POST /conversations/`
+- `GET/POST /conversations/{conversation_id}/messages/`
+- `GET /ws-token/` (returns JWT token for websocket query param)
+
+WebSocket endpoint:
+
+- `/ws/chat/{conversation_id}/?token=<jwt>`
+
+## Media Uploads
+
+- Profile photos: `backend/media/profiles/`
+- Service images: `backend/media/services/`
+
+## Database Configuration
+
+Current backend settings use:
+
+- SQLite when `DB_NAME` is not set
+- MySQL when `DB_NAME` is set (with `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`)
+
+If switching to MySQL, make sure those `DB_*` variables exist in `.env`.
 
 ## Notes
 
-- Categories are seeded automatically via migration.
-- Database defaults to SQLite for immediate local run; set PostgreSQL env vars in root `.env` (from `.env.example`) to switch.
-- Payment is intentionally dummy/mock for MVP.
+- Categories are seeded via migrations.
+- Payment is intentionally mock (`dummy_payment_status`) for MVP flow.
+- Channels layer is currently in-memory, suitable for local development.
